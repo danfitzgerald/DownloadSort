@@ -46,7 +46,11 @@ class StagedFile:
 
 def stage_file(src: str) -> StagedFile:
     # Get desired folder given file extension.
-    file_ext = src.split('.')[-1]
+    file_ext = src.split('.')
+    if len(file_ext) > 1:
+        file_ext = file_ext[-1]
+    else:
+        file_ext = None
     target_folder = ext_to_folder(file_ext)
 
     src = src.replace('/', '\\')  # Makes all slashes the same (arbitrarily chose the "/")
@@ -54,22 +58,55 @@ def stage_file(src: str) -> StagedFile:
     dst_l.insert(-1, target_folder)
     dst = '\\'.join(dst_l)
 
+    # If the filename already exists at the destination find a suggested one that doesnt.
+    i = 2
+    # path_changed = False
+    original_filename = dst_l[-1]
+    original_dst = dst
+    suggested_filename = None
+    while os.path.exists(dst):
+        # path_changed = True
+        if file_ext:
+            # Filename in the format 'name-i.ext'.
+            suggested_filename = original_filename[:-len(file_ext) - 1] + '-' + str(i) + '.' + file_ext
+        else:
+            # Filename in the format 'name-i' i being an integer
+            suggested_filename = original_filename + '-' + str(i)
+
+        dst_l[-1] = suggested_filename
+        dst = '\\'.join(dst_l)
+        i += 1
+
+    # If there is a suggested filename (ie because a file exists at the desired destination) suggest it.
+    if suggested_filename:
+        print("A file already exists at destination for %s." % original_dst)
+        new_filename = input('Please enter a new destination filename [%s]: ' % suggested_filename)
+        if not new_filename.strip() == '':
+            dst_l[-1] = new_filename
+            dst = '\\'.join(dst_l)
+
     return StagedFile(target_folder, src, dst)
 
 
-def move_staged(staged_files: []):
+def move_staged(staged_files: []) -> bool:
+    success = True
     for staged_file in staged_files:
         try:
             staged_file.move_file()
         except FileExistsError:
-            logging.error("Unable to move file. Destination already exists: " + str(staged_file))
+            logging.error("Unable to move file. Destination already exists:\n" + str(staged_file))
+            success = False
         except IsADirectoryError or NotADirectoryError:
             logging.error("IsADirectoryError or NotADirectoryError: Implementation error")
+            success = False
         except FileNotFoundError:
             logging.error('FileNotFoundError: Either destination folder has not been created or source file no longer'
                           ' exists')
+            success = False
         except OSError:
             logging.error("OSError: Oops")
+            success = False
+    return success
 
 
 def ext_to_folder(ext: str) -> str:
@@ -131,7 +168,10 @@ def _main():
     for mkdir in mkdirs:
         os.mkdir(DOWNLOADS_DIR + '\\' + mkdir)
     # Move the staged files to their corresponding destinations.
-    move_staged(staged_files)
+    if move_staged(staged_files):
+        print('Completed without errors.')
+    else:
+        print('Script completed check errors.')
 
 
 if __name__ == '__main__':
