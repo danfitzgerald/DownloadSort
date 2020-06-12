@@ -15,7 +15,7 @@
 import os
 import logging
 
-DOWNLOADS_DIR = '.\\sample_downloads'
+DOWNLOADS_DIR = '.\\sample_downloads'  # REPLACE WITH PATH TO DOWNLOADS FOLDER
 FOLDER_NAMES = ['Images', 'Documents', 'Executables', 'Other Files']
 
 
@@ -41,10 +41,9 @@ def stage_file(src: str) -> StagedFile:
         file_ext = None
     target_folder = ext_to_folder(file_ext)
 
-    src = src.replace('/', '\\')  # Makes all slashes the same (arbitrarily chose the "/")
-    dst_l = src.split('\\')
+    dst_l = src.split(os.sep)
     dst_l.insert(-1, target_folder)
-    dst = '\\'.join(dst_l)
+    dst = os.path.join(*dst_l)
 
     # If the filename already exists at the destination find a suggested one that doesnt.
     i = 2
@@ -62,7 +61,7 @@ def stage_file(src: str) -> StagedFile:
             suggested_filename = original_filename + '-' + str(i)
 
         dst_l[-1] = suggested_filename
-        dst = '\\'.join(dst_l)
+        dst = os.path.join(*dst_l)
         i += 1
 
     # If there is a suggested filename (ie because a file exists at the desired destination) suggest it.
@@ -71,7 +70,7 @@ def stage_file(src: str) -> StagedFile:
         new_filename = input('Please enter a new destination filename [%s]: ' % suggested_filename)
         if not new_filename.strip() == '':
             dst_l[-1] = new_filename
-            dst = '\\'.join(dst_l)
+            dst = os.path.join(*dst_l)
 
     return StagedFile(target_folder, src, dst)
 
@@ -121,8 +120,8 @@ def _main():
     for f in sd:
         # Traverse through folders to find folders we require to make.
         if f.is_dir():
-            path = f.path.replace('/', '\\')
-            dir_name = path.split('\\')[-1]
+            path = f.path
+            dir_name = path.split(os.sep)[-1]
             if not len(existing_dirs) == len(FOLDER_NAMES) and dir_name in FOLDER_NAMES:
                 existing_dirs.append(dir_name)
 
@@ -154,7 +153,7 @@ def _main():
             mkdirs.append(rdir)
 
     for mkdir in mkdirs:
-        os.mkdir(DOWNLOADS_DIR + '\\' + mkdir)
+        os.mkdir(DOWNLOADS_DIR + os.sep + mkdir)
     # Move the staged files to their corresponding destinations.
     if move_staged(staged_files):
         print('Completed without errors.')
